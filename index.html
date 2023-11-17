@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Impressive Dictionary - Your go-to destination for quick and detailed word definitions. Enhance your vocabulary and knowledge.">
+  <meta name="keywords" content="impressive dictionary, word definitions, vocabulary, online dictionary, dictionary API">
+  <meta name="author" content="Your Name">
+  <title>Impressive Dictionary</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      background-color: #f9f9f9;
+      color: #333;
+      transition: background-color 0.3s ease;
+    }
+
+    header {
+      background-color: #2c3e50;
+      color: white;
+      text-align: center;
+      padding: 1em 0;
+    }
+
+    main {
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: white;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      transition: box-shadow 0.3s ease;
+    }
+
+    #introduction {
+      margin-bottom: 20px;
+    }
+
+    .search-container {
+      margin-bottom: 20px;
+      display: flex;
+      position: relative;
+    }
+
+    #searchInput {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px 0 0 4px;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 0 4px 4px 0;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #resultContainer {
+      margin-top: 20px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .loading {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      height: 100px;
+    }
+
+    .loading-spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 20px;
+      color: #777;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Popup styles */
+    .popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 10px;
+      max-width: 200px;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease, transform 0.3s ease;
+    }
+
+    .popup.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Trash icon styles */
+    #trashIcon {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: red;
+      fill: red;
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+    }
+
+    #trashIcon:hover {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Impressive Dictionary</h1>
+  </header>
+
+  <main>
+    <div id="introduction">
+      <p>Welcome to Impressive Dictionary, your go-to destination for quick and detailed word definitions. Enhance your vocabulary and knowledge with our user-friendly interface. Explore the richness of the English language effortlessly.</p>
+      <p>Start by entering a word in the search bar, and let our impressive dictionary provide you with definitions, synonyms, antonyms, and more. Discover the beauty of language with just a few clicks!</p>
+      <p>Ready to get started? Enter a word now or <a href="#" onclick="redirectToLearnMore()">learn more about Impressive Dictionary</a>.</p>
+    </div>
+
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Enter a word..." onkeypress="handleKeyPress(event)">
+      <button onclick="searchDictionary()">Search</button>
+    </div>
+
+    <div id="resultContainer">
+      <!-- Search results will be displayed here -->
+    </div>
+
+    <div id="loadingContainer" class="loading">
+      <div class="loading-spinner"></div>
+    </div>
+
+    <div id="searchHistoryPopup" class="popup">
+      <h3>Search History</h3>
+      <ul id="searchHistoryList"></ul>
+      <button onclick="clearSearchHistory()">Clear History</button>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2023 Impressive Dictionary</p>
+  </footer>
+
+  <!-- Trash icon button -->
+  <span id="trashIcon" onclick="showSearchHistory()" style="color: red;">🗑️</span>
+
+  <script>
+    function handleKeyPress(event) {
+      if (event.key === 'Enter') {
+        searchDictionary();
+      }
+    }
+
+    function searchDictionary() {
+      var searchTerm = document.getElementById('searchInput').value;
+      var apiUrl = `https://api.dictionaryapi.dev/api/v2/entries/en/${searchTerm}`;
+
+      // Display loading spinner
+      document.getElementById('loadingContainer').style.display = 'flex';
+
+      // Save search term to local storage
+      saveToLocalStorage(searchTerm);
+
+      // Make the API call
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          displayResults(data);
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          displayError();
+        });
+    }
+
+    function displayResults(data) {
+      var resultContainer = document.getElementById('resultContainer');
+      var loadingContainer = document.getElementById('loadingContainer');
+
+      // Hide loading spinner
+      loadingContainer.style.display = 'none';
+
+      resultContainer.innerHTML = '';
+
+      if (Array.isArray(data) && data.length > 0) {
+        resultContainer.innerHTML += '<h2>Definitions:</h2>';
+        
+        data.forEach(entry => {
+          var partOfSpeech = entry.meanings[0].partOfSpeech;
+          var definition = entry.meanings[0].definitions[0].definition;
+
+          resultContainer.innerHTML += `<p><strong>${partOfSpeech}:</strong> ${definition}</p>`;
+        });
+      } else {
+        resultContainer.innerHTML = '<p>No results found.</p>';
+      }
+
+      // Show search results with fade-in effect
+      resultContainer.style.opacity = '1';
+    }
+
+    function displayError() {
+      var resultContainer = document.getElementById('resultContainer');
+      var loadingContainer = document.getElementById('loadingContainer');
+
+      // Hide loading spinner
+      loadingContainer.style.display = 'none';
+
+      resultContainer.innerHTML = '<p>An error occurred. Please try again later.</p>';
+      
+      // Show search results with fade-in effect
+      resultContainer.style.opacity = '1';
+    }
+
+    // Save search term to local storage
+    function saveToLocalStorage(searchTerm) {
+      var searchHistory = getSearchHistory();
+
+      // Add the new search term to the beginning of the array
+      searchHistory.unshift(searchTerm);
+
+      // Keep only the last 5 search terms
+      searchHistory = searchHistory.slice(0, 5);
+
+      // Save the updated search history to local storage
+      localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+
+      // Display the updated search history
+      displaySearchHistory(searchHistory);
+    }
+
+    // Retrieve search history from local storage
+    function getSearchHistory() {
+      var searchHistory = localStorage.getItem('searchHistory');
+      return searchHistory ? JSON.parse(searchHistory) : [];
+    }
+
+    // Display search history in the popup
+    function displaySearchHistory(searchHistory) {
+      var searchHistoryList = document.getElementById('searchHistoryList');
+      searchHistoryList.innerHTML = '';
+
+      searchHistory.forEach(term => {
+        var listItem = document.createElement('li');
+        listItem.textContent = term;
+        searchHistoryList.appendChild(listItem);
+      });
+
+      // Display the popup with slide-up effect
+      var popup = document.getElementById('searchHistoryPopup');
+      popup.classList.add('show');
+
+      // Hide the popup after 3 seconds
+      setTimeout(function() {
+        popup.classList.remove('show');
+      }, 3000);
+    }
+
+    // Show search history popup
+    function showSearchHistory() {
+      var searchHistory = getSearchHistory();
+      displaySearchHistory(searchHistory);
+    }
+
+    // Clear search history
+    function clearSearchHistory() {
+      localStorage.removeItem('searchHistory');
+      var searchHistoryList = document.getElementById('searchHistoryList');
+      searchHistoryList.innerHTML = '';
+    }
+
+    // Function to redirect users to Learn More page (customize the URL as needed)
+    function redirectToLearnMore() {
+      // Replace 'https://example.com/learn-more' with the actual URL
+      window.location.href = 'https://dictionaryapi.dev/';
+    }
+  </script>
+</body>
+</html>
